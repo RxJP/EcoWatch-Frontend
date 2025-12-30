@@ -7,6 +7,52 @@ const QASection = () => {
   const [loading, setLoading] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
 
+  const cleanLatexText = (text) => {
+    // Remove LaTeX math delimiters and convert to readable text
+    let cleaned = text;
+
+    // Replace inline math $...$ with plain text
+    cleaned = cleaned.replace(/\$([^$]+)\$/g, (match, content) => {
+      // Remove \text{} wrappers
+      content = content.replace(/\\text\{([^}]+)\}/g, '$1');
+      // Remove other LaTeX commands
+      content = content.replace(/\\[a-zA-Z]+/g, '');
+      // Clean up extra spaces and braces
+      content = content.replace(/[{}]/g, '').trim();
+      return content;
+    });
+
+    // Replace display math $$...$$ with plain text
+    cleaned = cleaned.replace(/\$\$([^$]+)\$\$/g, (match, content) => {
+      content = content.replace(/\\text\{([^}]+)\}/g, '$1');
+      content = content.replace(/\\[a-zA-Z]+/g, '');
+      content = content.replace(/[{}]/g, '').trim();
+      return content;
+    });
+
+    // Handle common chemical formulas
+    cleaned = cleaned.replace(/CO₂|CO2/g, 'CO₂');
+    cleaned = cleaned.replace(/H₂O|H2O/g, 'H₂O');
+    cleaned = cleaned.replace(/CH₄|CH4/g, 'CH₄');
+    cleaned = cleaned.replace(/N₂O|N2O/g, 'N₂O');
+    cleaned = cleaned.replace(/O₂|O2/g, 'O₂');
+    
+    return cleaned;
+  };
+
+  const formatAnswer = (rawAnswer) => {
+    // Clean LaTeX
+    let formatted = cleanLatexText(rawAnswer);
+
+    // Convert **text** to <strong>
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // Preserve line breaks
+    formatted = formatted.replace(/\n/g, '<br>');
+
+    return formatted;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!question.trim()) return;
@@ -17,11 +63,8 @@ const QASection = () => {
 
     try {
       const response = await api.post('/ai/ask', { question });
-      const formattedAnswer = response.data.data.replace(
-        /\*\*(.*?)\*\*/g, 
-        '<strong>$1</strong>'
-      );
-      setAnswer(`<strong>Answer:</strong><br><br>${formattedAnswer}`);
+      const cleanedAnswer = formatAnswer(response.data.data);
+      setAnswer(`<strong>Answer:</strong><br><br>${cleanedAnswer}`);
     } catch (error) {
       console.error('Q&A error:', error);
       setAnswer(

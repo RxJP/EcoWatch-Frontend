@@ -1,47 +1,284 @@
 import React, { useState, useEffect } from 'react';
-import api from '../services/api';
 
 const ImpactAnalysis = ({ selectedZone }) => {
-  const [analysis, setAnalysis] = useState(
-    'Click a risk zone on the map to see AI-powered impact analysis.'
-  );
+  const [sections, setSections] = useState([]);
+  const [currentSection, setCurrentSection] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [zoneName, setZoneName] = useState('');
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     if (selectedZone) {
-      analyzeZone(selectedZone);
+      displayAnalysis(selectedZone);
+      setIsVisible(true);
     } else {
-      setAnalysis('Click a risk zone on the map to see AI-powered impact analysis.');
+      setIsVisible(false);
+      setZoneName('');
+      setSections([]);
     }
   }, [selectedZone]);
 
-  const analyzeZone = async (zone) => {
-    setLoading(true);
-    setAnalysis('🤖 AI is analyzing satellite data & ecological reports...');
+  const parseAnalysis = (htmlText) => {
+    // Parse the HTML analysis into sections
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlText;
 
-    try {
-      const response = await api.post('/ai/analyze', { zone });
-      setAnalysis(response.data.data);
-    } catch (error) {
-      console.error('Analysis error:', error);
-      setAnalysis(
-        `<strong style="color:red">⚠️ Analysis Error:</strong> ${
-          error.response?.data?.message || error.message
-        }<br><br>Please try again or check your API configuration.`
-      );
-    } finally {
+    const allSections = [];
+    const headers = tempDiv.querySelectorAll('h3');
+
+    headers.forEach((header, index) => {
+      // Skip the first section (index 0) as it's empty and useless
+      if (index === 0) {
+        return;
+      }
+
+      const sectionTitle = header.textContent.trim();
+      let sectionContent = '';
+
+      // Get all content until next h3 or end
+      let nextElement = header.nextElementSibling;
+      while (nextElement && nextElement.tagName !== 'H3') {
+        sectionContent += nextElement.outerHTML;
+        nextElement = nextElement.nextElementSibling;
+      }
+
+      // Determine section type for icons and timeframe
+      let timeframe = 'Analysis';
+      let icon = '📊';
+
+      if (sectionTitle.toLowerCase().includes('immediate') || 
+          sectionTitle.toLowerCase().includes('short-term') ||
+          sectionTitle.toLowerCase().includes('1-2 year')) {
+        timeframe = '1-2 Years';
+        icon = '⚡';
+      } else if (sectionTitle.toLowerCase().includes('medium-term') || 
+                 sectionTitle.toLowerCase().includes('3-7 year')) {
+        timeframe = '3-7 Years';
+        icon = '📈';
+      } else if (sectionTitle.toLowerCase().includes('long-term') || 
+                 sectionTitle.toLowerCase().includes('10') ||
+                 sectionTitle.toLowerCase().includes('trajectory')) {
+        timeframe = '10-25 Years';
+        icon = '🔮';
+      } else if (sectionTitle.toLowerCase().includes('wildlife') || 
+                 sectionTitle.toLowerCase().includes('species') ||
+                 sectionTitle.toLowerCase().includes('ecosystem')) {
+        timeframe = 'Ecological Impact';
+        icon = '🐾';
+      } else if (sectionTitle.toLowerCase().includes('human') || 
+                 sectionTitle.toLowerCase().includes('health') ||
+                 sectionTitle.toLowerCase().includes('livelihood')) {
+        timeframe = 'Human Impact';
+        icon = '👥';
+      } else if (sectionTitle.toLowerCase().includes('evidence') || 
+                 sectionTitle.toLowerCase().includes('data') ||
+                 sectionTitle.toLowerCase().includes('scientific')) {
+        timeframe = 'Scientific Evidence';
+        icon = '🔬';
+      } else if (sectionTitle.toLowerCase().includes('action') || 
+                 sectionTitle.toLowerCase().includes('solution') ||
+                 sectionTitle.toLowerCase().includes('plan')) {
+        timeframe = 'Action Plan';
+        icon = '🎯';
+      }
+
+      allSections.push({
+        title: sectionTitle,
+        content: sectionContent,
+        timeframe,
+        icon
+      });
+    });
+
+    return allSections;
+  };
+
+  const displayAnalysis = (zone) => {
+    setZoneName(zone.name);
+    setLoading(true);
+    setCurrentSection(0);
+
+    if (zone.impactAnalysis) {
+      const parsed = parseAnalysis(zone.impactAnalysis);
+      setSections(parsed);
+      setLoading(false);
+    } else {
+      setSections([{
+        title: 'Analysis Not Available',
+        content: `
+          <div style="text-align: center; padding: 20px;">
+            <p style="color: #b30000; font-weight: bold;">⚠️ Detailed Impact Analysis Not Yet Available</p>
+            <p style="color: #666; margin-top: 10px;">
+              The comprehensive environmental impact analysis for <strong>${zone.name}</strong> 
+              is currently being generated by our AI system.
+            </p>
+            <p style="color: #0b5d1e; margin-top: 15px;">
+              Please check back soon for the detailed analysis.
+            </p>
+          </div>
+        `,
+        timeframe: 'Pending',
+        icon: '⏳'
+      }]);
       setLoading(false);
     }
   };
 
+  const handleSectionChange = (index) => {
+    setCurrentSection(index);
+  };
+
+  const goToPrevSection = () => {
+    if (currentSection > 0) {
+      setCurrentSection(currentSection - 1);
+    }
+  };
+
+  const goToNextSection = () => {
+    if (currentSection < sections.length - 1) {
+      setCurrentSection(currentSection + 1);
+    }
+  };
+
+  if (!isVisible) {
+    return (
+      <section id="impact-section" className="section">
+        <h2>Environmental Impact Analysis</h2>
+        <div className="impact-placeholder">
+          <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>
+            🗺️ Click a risk zone on the map to see comprehensive AI-powered impact analysis with timeline navigation.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  const currentSectionData = sections[currentSection];
+
   return (
     <section id="impact-section" className="section">
-      <h2>Environmental Impact Analysis</h2>
-      <div 
-        id="impact" 
-        dangerouslySetInnerHTML={{ __html: analysis }}
-        style={{ opacity: loading ? 0.6 : 1 }}
-      />
+      <div className="impact-header">
+        <div>
+          <h2>Environmental Impact Analysis</h2>
+          <span className="impact-zone-name">{zoneName}</span>
+        </div>
+        <button 
+          onClick={() => setIsVisible(false)}
+          className="hide-impact-btn"
+          title="Hide analysis"
+        >
+          ✖ Hide
+        </button>
+      </div>
+
+      {sections.length > 0 && (
+        <>
+          {/* Timeline Slider */}
+          <div className="impact-timeline">
+            <div className="timeline-header">
+              <span className="timeline-label">Navigate Analysis Sections:</span>
+              <span className="timeline-position">
+                {currentSection + 1} of {sections.length}
+              </span>
+            </div>
+
+            <div className="timeline-slider-container">
+              <input
+                type="range"
+                min="0"
+                max={sections.length - 1}
+                value={currentSection}
+                onChange={(e) => handleSectionChange(parseInt(e.target.value))}
+                className="impact-timeline-slider"
+                style={{
+                  background: `linear-gradient(to right, 
+                    #0b5d1e 0%, 
+                    #0b5d1e ${(currentSection / (sections.length - 1)) * 100}%, 
+                    #ddd ${(currentSection / (sections.length - 1)) * 100}%, 
+                    #ddd 100%)`
+                }}
+              />
+
+              <div className="timeline-markers">
+                {sections.map((section, index) => (
+                  <button
+                    key={index}
+                    className={`timeline-marker ${index === currentSection ? 'active' : ''}`}
+                    onClick={() => handleSectionChange(index)}
+                    style={{ left: `${(index / (sections.length - 1)) * 100}%` }}
+                    title={section.title}
+                  >
+                    <span className="marker-icon">{section.icon}</span>
+                    <span className="marker-label">{section.timeframe}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+          </div>
+
+          {/* Section Content */}
+          <div className="impact-content-wrapper">
+            <div 
+              className="impact-section-card"
+              style={{ opacity: loading ? 0.6 : 1 }}
+            >
+              <div className="section-header-badge">
+                <span className="section-icon">{currentSectionData?.icon}</span>
+                <div className="section-info">
+                  <div className="section-title">{currentSectionData?.title}</div>
+                  <div className="section-timeframe">{currentSectionData?.timeframe}</div>
+                </div>
+              </div>
+              
+              <div 
+                className="section-content"
+                dangerouslySetInnerHTML={{ __html: currentSectionData?.content }}
+              />
+
+              <div className="section-progress">
+                <button
+                    onClick={goToPrevSection}
+                    disabled={currentSection === 0}
+                    className="timeline-nav-btn nav-left"
+                >
+                    ← Previous
+                </button>
+
+                <div className="progress-dots">
+                    {sections.map((_, index) => (
+                    <span
+                        key={index}
+                        className={`progress-dot ${
+                        index === currentSection ? 'active' : ''
+                        } ${index < currentSection ? 'completed' : ''}`}
+                        onClick={() => handleSectionChange(index)}
+                    />
+                    ))}
+                </div>
+
+                <button
+                    onClick={goToNextSection}
+                    disabled={currentSection === sections.length - 1}
+                    className="timeline-nav-btn nav-right"
+                >
+                    Next →
+                </button>
+                </div>
+            </div>
+
+            <div className="impact-footer-info">
+              <strong>📊 Analysis Information:</strong>
+              <ul>
+                <li>Generated using advanced AI environmental modeling</li>
+                <li>Based on current scientific research and case studies</li>
+                <li>Use the timeline slider to navigate through different impact periods</li>
+                <li>Click markers or use arrow buttons to move between sections</li>
+              </ul>
+            </div>
+          </div>
+        </>
+      )}
     </section>
   );
 };

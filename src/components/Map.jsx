@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Circle } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { zones, getZoneColor } from '../services/zones';
+import api from '../services/api';
 
 const ZoneCircle = ({ zone, onSelect }) => {
   return (
@@ -22,10 +23,33 @@ const ZoneCircle = ({ zone, onSelect }) => {
 
 const Map = ({ onZoneSelect }) => {
   const [selectedZone, setSelectedZone] = useState(null);
+  const [zoneImpacts, setZoneImpacts] = useState({});
+
+  useEffect(() => {
+    // Pre-load all zone impacts for quick access
+    const loadImpacts = async () => {
+      for (const zone of zones) {
+        try {
+          const response = await api.get(`/ai/impact/${zone.id}`);
+          setZoneImpacts(prev => ({
+            ...prev,
+            [zone.id]: response.data.data.analysis
+          }));
+        } catch (error) {
+          console.log(`Impact not yet generated for ${zone.name}`);
+        }
+      }
+    };
+    loadImpacts();
+  }, []);
 
   const handleZoneSelect = (zone) => {
     setSelectedZone(zone);
-    onZoneSelect(zone);
+    // Pass zone with cached impact analysis
+    onZoneSelect({
+      ...zone,
+      impactAnalysis: zoneImpacts[zone.id]
+    });
   };
 
   const handleClosePanel = () => {
@@ -47,10 +71,10 @@ const Map = ({ onZoneSelect }) => {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
           {zones.map(zone => (
-            <ZoneCircle 
-              key={zone.id} 
-              zone={zone} 
-              onSelect={handleZoneSelect} 
+            <ZoneCircle
+              key={zone.id}
+              zone={zone}
+              onSelect={handleZoneSelect}
             />
           ))}
         </MapContainer>
@@ -84,6 +108,11 @@ const Map = ({ onZoneSelect }) => {
                 </p>
               ))}
             </div>
+            {zoneImpacts[selectedZone.id] && (
+              <p style={{ marginTop: '10px', fontSize: '0.85em', color: '#0b5d1e' }}>
+                ✅ Detailed analysis available below
+              </p>
+            )}
           </aside>
         )}
       </div>

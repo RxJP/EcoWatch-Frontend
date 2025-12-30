@@ -1,12 +1,11 @@
 // ============================================
-// client/src/App.jsx
+// client/src/App.jsx (UPDATED - TimeSlider Removed)
 // ============================================
 import React, { useState } from 'react';
 import './App.css';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Map from './components/Map';
-import TimeSlider from './components/TimeSlider';
 import ImpactAnalysis from './components/ImpactAnalysis';
 import QASection from './components/QASection';
 import Petitions from './components/Petitions';
@@ -29,7 +28,7 @@ function AppContent() {
       <Navbar onOpenAuth={openAuthModal} />
       <Hero />
       <Map onZoneSelect={setSelectedZone} />
-      <TimeSlider />
+      {/* TimeSlider removed - now integrated into ImpactAnalysis */}
       <ImpactAnalysis selectedZone={selectedZone} />
       <QASection />
       <Petitions onOpenAuth={openAuthModal} />
