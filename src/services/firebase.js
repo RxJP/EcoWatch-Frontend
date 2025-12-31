@@ -1,13 +1,8 @@
-// ============================================
-// client/src/services/firebase.js
-// ============================================
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getAnalytics } from "firebase/analytics";
 
-// TODO: Replace with your Firebase config from Firebase Console
-// Go to Project Settings -> General -> Your apps -> Web app
 const firebaseConfig = {
   apiKey: "AIzaSyDdy1TTB2tAH2X0S_atakOLqttNCb47KvA",
   authDomain: "ecowatch-42175.firebaseapp.com",
